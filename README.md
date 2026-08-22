@@ -1,6 +1,6 @@
 # Field Management System
 
-The STORM Field Management System is the system behind controlling all of the field elements, match timer, scoring, live stream overlays, etc. For the 2026 competition year, the full code will not be released until after the competition as completed. For future competition years, the full code will be released around when the rules release so teams can simulate the competition at home.
+The STORM Field Management System is the system behind controlling all of the field elements, match timer, scoring, live stream overlays, etc.
 
 ## API Documentation
 
