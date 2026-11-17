@@ -10,15 +10,13 @@ Operators drive their robots directly. The FMS never relays commands.
   game, including the layout of the SCORE_UPDATE `detail` bytes.
 - [testdata/protocol_vectors.json](testdata/protocol_vectors.json): golden bytes for
   every message, plus invalid inputs your decoder must refuse. Test against these.
-- [examples/](examples/): example clients you can start from.
-  - [examples/python](examples/python): Python 3.8+, standard library only.
-  - [examples/cpp](examples/cpp): C++17 with POSIX sockets, for Linux boards such as a
-    Raspberry Pi.
+- [examples/](examples/): an example client you can start from.
+  - [examples/java](examples/java): Java 17 or later, JDK only.
 - [docs/practice-fms.md](docs/practice-fms.md): run the FMS yourself, to practice before an event.
 
 ## What every robot must do
 
-These are the safety rules from the protocol. The examples implement all of them.
+These are the safety rules from the protocol. The example client implements all of them.
 
 1. **Start disabled.** Nothing moves until the FMS sends `enabled = 1`.
 2. **Loss of Signal (rule R7).** If no message of any kind arrives from the FMS for
@@ -33,9 +31,9 @@ Your event gives you a team number and a 64-character token. Pass the token in t
 `STORM_TOKEN` environment variable, so it stays out of your shell history and process
 list:
 
-    STORM_TOKEN=<token> python3 examples/python/storm_robot.py --host <fms address> --team 12
+    STORM_TOKEN=<token> java examples/java/StormRobot.java --host <fms address> --team 12
 
-Each client prints one line per change:
+The client prints one line per change:
 
     motion: disabled (starting)
     connected: team 12 "Iron Gulls" robot "Gull 3" game loose_cannons_2027

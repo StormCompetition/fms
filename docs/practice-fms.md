@@ -42,10 +42,10 @@ output shows your token once:
     team add 12 "Iron Gulls" "Gull 3"
 
 Show the token again later with `team token 12`. Connect your robot with that team
-number and token, pointing it at the laptop's address. With the Python example client
+number and token, pointing it at the laptop's address. With the Java example client
 from this repository:
 
-    STORM_TOKEN=<token> python3 examples/python/storm_robot.py --host <laptop address> --team 12
+    STORM_TOKEN=<token> java examples/java/StormRobot.java --host <laptop address> --team 12
 
 The robot shows up in the Robots panel. Then run a match against the built-in House
 team, which needs no robot:
