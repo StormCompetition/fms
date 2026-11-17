@@ -14,6 +14,7 @@ Operators drive their robots directly. The FMS never relays commands.
   - [examples/python](examples/python): Python 3.8+, standard library only.
   - [examples/cpp](examples/cpp): C++17 with POSIX sockets, for Linux boards such as a
     Raspberry Pi.
+- [docs/practice-fms.md](docs/practice-fms.md): run the FMS yourself, to practice before an event.
 
 ## What every robot must do
 
