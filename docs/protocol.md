@@ -9,7 +9,7 @@ Reference clients are in `examples/`. Golden byte vectors for every message are 
 - TCP. Default server port 5800.
 - The robot connects to the server. One connection per team (rule C4).
 - Clients should set `TCP_NODELAY` as messages are generally small and we want to reduce latency.
-- The server limits connections per source IP address (default 4).
+- The server limits connections per source IP address (default 4). Connections over the limit are closed immediately without a message.
 
 ## Framing
 
@@ -23,6 +23,14 @@ All integers are unsigned and big endian. Every message is a 12-byte header foll
     8      2    payload_len  bytes following the header (max 1024)
     10     2    sequence     per sender and starts at 0, +1 per message. range is 0 to 65535
 
+Receiver rules:
+
+- Bad magic, or `payload_len` over 1024: close the connection immediately. Do not try to resync, as a stream that is out of frame cannot be trusted.
+- Version other than 0x01: the server sends REJECT `bad_version` (framed as version 1) and closes.
+- A payload shorter than the fields of its message type is malformed.
+- Bytes after the last known field of a message are ignored. Later revisions of version 1 may append fields to a message. They never change the meaning or position of the fields before them. See Revisions for the one removal so far.
+- `sequence` is informational. Receivers may log gaps but must not reject on them.
+
 ### Field Types
 
 | Type   | Encoding                                                     |
@@ -33,12 +41,14 @@ All integers are unsigned and big endian. Every message is a 12-byte header foll
 | string | u8 length, then that many bytes of UTF-8 (max 255 bytes)     |
 | bytes  | u16 length, then that many raw bytes                         |
 
+Invalid UTF-8 in a string is malformed.
+
 The `enabled` fields in MOVE_AUTH and STATUS are u8 and must be exactly 0 or 1. Any other value is malformed and must be ignored or treated as disabled.
 
 ## Connection Lifecycle
 
-1. Robot connects and sends HELLO. The server closes the connection if HELLO does not arrive within 3s. Any other message before HELLO gets REJECT `malformed` and is closed.
-2. The server checks in order: team exists, token matches, source IP is inside the team's allowed CIDRs. Any failure is REJECTED with the matching reason and a close.
+1. Robot connects and sends HELLO. The server closes the connection if HELLO does not arrive within 2s. Any other message before HELLO gets REJECT `malformed` and is closed.
+2. The server checks in order: team exists and is active, token matches, source IP is inside the team's allowed CIDRs. Any failure is REJECTED with the matching reason and a close.
 3. On success the server sends in order: WELCOME, MATCH_INFO (only if the team is in the loaded match), MOVE_AUTH, STATUS.
 4. The robot sends HEARTBEAT every `heartbeat_interval_ms` from WELCOME starting as soon as possible.
 5. The server sends STATUS every `status_interval_ms`, plus event messages (PHASE_CHANGE, MOVE_AUTH, SCORE_UPDATE, MATCH_INFO) when things change.
@@ -46,10 +56,12 @@ The `enabled` fields in MOVE_AUTH and STATUS are u8 and must be exactly 0 or 1. 
 
 If a second valid connection arrives for a team, it replaces the first. The server sends ERROR `replaced` on the old connection and closes it.
 
+The server may also close a live connection with ERROR `revoked` when the team's token is regenerated, the team is deactivated or removed, or its allowed CIDRs no longer include the robot's address.
+
 ## Safety requirements
 
 - **Loss of Signal (rule R7).** If the robot receives no server message of any kind for `heartbeat_timeout_ms`, it must treat the link as lost and halt all motion. It must halt within 1s of the last server message regardless of the configured timeout.
-- **Disabled (rule C17).** When the most recent MOVE_AUTH or STATUS says `enabled = 0` the robot is not allowed to be controlled.
+- **Disabled (rule C17).** When the most recent MOVE_AUTH or STATUS says `enabled = 0` the robot is not allowed to be controlled. Treat any authorization reason you do not recognize as disabled.
 - **Starting Disabled.** A robot is disabled from connect until the server says otherwise.
 - The server side view: if no HEARTBEAT arrives for `heartbeat_timeout_ms` the server marks the robot `loss_of_signal` and disables it. It will re-enable it once heartbeats resume.
 

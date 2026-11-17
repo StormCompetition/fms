@@ -14,6 +14,8 @@ PRE_MATCH movement is allowed by default (rule M2, `prematch_movement: true`). E
 
 ## Points
 
+These are the defaults. An event can change them in its FMS config.
+
 | Item                           | Auto | TeleOp |
 |--------------------------------|------|--------|
 | Leave Staging Zone             | 5    |        |
@@ -27,6 +29,15 @@ PRE_MATCH movement is allowed by default (rule M2, `prematch_movement: true`). E
 | Damaged threshold              | 5 balls |     |
 
 Auto hit values are double the TeleOp values (`auto_multiplier: 2`).
+
+## Rules as implemented
+
+- **Hits** are scored by the alliance that shot the ball into the opposing ship. A hit counts as auto or TeleOp by the phase the referees log it in, not the clock. Hits logged during REF_PAUSE count as auto, because that is when referees confirm autonomous scoring.
+- **Damaged.** An entry point on a ship is Damaged once 5 live (not voided) balls have entered it, counting all phases. Damaged awards nothing on its own, and hits after that still score normally.
+- **Climb** is hanging from the opposing ship's rope at match end, at most once per alliance.
+- **Damaged bonus** is 5 for each entry point on the opposing ship that this alliance Damaged, and only if this alliance Climbed.
+- **Penalties** subtract from the offending alliance.
+- **Disqualification** sets that alliance's final score to 0, and the final score is never below 0.
 
 ```
 total = auto + teleop + climb + damaged_bonus - penalties
@@ -46,6 +57,8 @@ if disqualified: total = 0
                                 bit0 rudder, bit1 hull, bit2 mast
     4      1    climbed         0 or 1
     5      2    penalty_points  points deducted from this alliance (positive number)
+
+Counts saturate at 255 on the wire. The server keeps exact counts.
 
 ## Example
 
