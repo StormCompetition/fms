@@ -1,115 +1,70 @@
-# STORM FMS Robot Protocol, version 1
+# STORM FMS Robot Protocol (Version 1)
 
-This document is part of the competition rules (rule C15). Every robot must implement it.
+The FMS is the field's authority on match timing, phase, scoring, and whether each robot may move.
 
-The FMS is the field's authority on match timing, phase, scoring, and whether each robot
-may move. It does not relay operator commands. Operators talk to their robots directly.
-
-Reference clients are in `examples/`. Golden byte vectors for every message are in
-`testdata/protocol_vectors.json` and at the end of this document. Both are generated from
-the FMS implementation, which is the source of truth.
+Reference clients are in `examples/`. Golden byte vectors for every message are in `testdata/protocol_vectors.json` and at the end of this document.
 
 ## Transport
 
 - TCP. Default server port 5800.
 - The robot connects to the server. One connection per team (rule C4).
-- Clients should set `TCP_NODELAY`. Messages are small and latency matters more than
-  throughput.
-- A server limits connections per source IP address (default 4). Connections over the
-  limit are closed immediately without a message.
+- Clients should set `TCP_NODELAY` as messages are generally small and we want to reduce latency.
+- The server limits connections per source IP address (default 4).
 
 ## Framing
 
-All integers are unsigned and big-endian. Every message is a 12-byte header followed by
-`payload_len` bytes of payload.
+All integers are unsigned and big endian. Every message is a 12-byte header followed by `payload_len` bytes of payload.
 
     offset size field
     0      4    magic        "STRM" (0x5354524D)
     4      1    version      0x01
     5      1    msg_type
-    6      2    flags        reserved, senders must write 0, receivers ignore
+    6      2    flags        reserved (set to 0)
     8      2    payload_len  bytes following the header (max 1024)
-    10     2    sequence     per sender, starts at 0, +1 per message, wraps 65535 to 0
+    10     2    sequence     per sender and starts at 0, +1 per message. range is 0 to 65535
 
-Receiver rules:
-
-- Bad magic, or `payload_len` > 1024: close the connection immediately. Do not try to
-  resync. A stream that is out of frame cannot be trusted.
-- Version other than 0x01: the server sends REJECT `bad_version` (framed as version 1) and
-  closes.
-- A payload shorter than the fields of its message type is malformed.
-- Bytes after the last known field of a message are ignored. Later revisions of version 1
-  may append fields to a message. They never change the meaning or position of the
-  fields before them. See Revisions for the one removal so far.
-- `sequence` is informational. Receivers may log gaps but must not reject on them.
-
-### Field types
+### Field Types
 
 | Type   | Encoding                                                     |
 |--------|--------------------------------------------------------------|
 | u8     | 1 byte                                                       |
-| u16    | 2 bytes, big-endian                                          |
-| u32    | 4 bytes, big-endian                                          |
+| u16    | 2 bytes, big endian                                          |
+| u32    | 4 bytes, big endian                                          |
 | string | u8 length, then that many bytes of UTF-8 (max 255 bytes)     |
 | bytes  | u16 length, then that many raw bytes                         |
 
-Invalid UTF-8 in a string is malformed.
+The `enabled` fields in MOVE_AUTH and STATUS are u8 and must be exactly 0 or 1. Any other value is malformed and must be ignored or treated as disabled.
 
-The `enabled` fields in MOVE_AUTH and STATUS are u8 and must be exactly 0 or 1. Any other
-value is malformed, so a corrupted byte is never read as enabled.
+## Connection Lifecycle
 
-## Connection lifecycle
+1. Robot connects and sends HELLO. The server closes the connection if HELLO does not arrive within 3s. Any other message before HELLO gets REJECT `malformed` and is closed.
+2. The server checks in order: team exists, token matches, source IP is inside the team's allowed CIDRs. Any failure is REJECTED with the matching reason and a close.
+3. On success the server sends in order: WELCOME, MATCH_INFO (only if the team is in the loaded match), MOVE_AUTH, STATUS.
+4. The robot sends HEARTBEAT every `heartbeat_interval_ms` from WELCOME starting as soon as possible.
+5. The server sends STATUS every `status_interval_ms`, plus event messages (PHASE_CHANGE, MOVE_AUTH, SCORE_UPDATE, MATCH_INFO) when things change.
+6. Either side may close. The robot should send GOODBYE first when it shuts down on purpose.
 
-1. Robot connects and sends HELLO. The server closes the connection if HELLO does not
-   arrive within 2 s. Any other message before HELLO gets REJECT `malformed` and a close.
-2. The server checks, in order: team exists and is active, token matches, source IP is
-   inside the team's allowed CIDRs. Any failure gets REJECT with the matching reason and a
-   close.
-3. On success the server sends, in order: WELCOME, MATCH_INFO (only if the team is in the
-   loaded match), MOVE_AUTH, STATUS.
-4. The robot sends HEARTBEAT every `heartbeat_interval_ms` from WELCOME, starting right
-   away.
-5. The server sends STATUS every `status_interval_ms`, plus event messages (PHASE_CHANGE,
-   MOVE_AUTH, SCORE_UPDATE, MATCH_INFO) when things change.
-6. Either side may close. The robot should send GOODBYE first when it shuts down on
-   purpose.
-
-If a second valid connection arrives for a team, it replaces the first. The server sends
-ERROR `replaced` on the old connection and closes it. This lets a robot reconnect after a
-Wi-Fi drop without waiting for the old socket to time out.
-
-The server may also close a live connection with ERROR `revoked` when the team's token is
-regenerated, the team is deactivated or removed, or its allowed CIDRs no longer include
-the robot's address.
+If a second valid connection arrives for a team, it replaces the first. The server sends ERROR `replaced` on the old connection and closes it.
 
 ## Safety requirements
 
-These are rules, not suggestions.
-
-- **Loss of Signal (rule R7).** If the robot receives no server message of any kind for
-  `heartbeat_timeout_ms`, it must treat the link as lost and halt all motion. It must halt
-  within 1 s of the last server message regardless of the configured timeout. STATUS is
-  sent every `status_interval_ms` precisely so that silence means trouble.
-- **Disabled means stopped (rule C17).** When the most recent MOVE_AUTH or STATUS says
-  `enabled = 0`, the robot must not move. Treat any reason code you do not recognize as
-  disabled.
-- **Start disabled.** A robot is disabled from connect until the server says otherwise.
-- The server-side view: if no HEARTBEAT arrives for `heartbeat_timeout_ms`, the server
-  marks the robot `loss_of_signal` and disables it. It will re-enable it (if the rules
-  allow) once heartbeats resume.
+- **Loss of Signal (rule R7).** If the robot receives no server message of any kind for `heartbeat_timeout_ms`, it must treat the link as lost and halt all motion. It must halt within 1s of the last server message regardless of the configured timeout.
+- **Disabled (rule C17).** When the most recent MOVE_AUTH or STATUS says `enabled = 0` the robot is not allowed to be controlled.
+- **Starting Disabled.** A robot is disabled from connect until the server says otherwise.
+- The server side view: if no HEARTBEAT arrives for `heartbeat_timeout_ms` the server marks the robot `loss_of_signal` and disables it. It will re-enable it once heartbeats resume.
 
 ## Messages
 
-### Robot to server
+### Robot -> Server
 
 #### 0x01 HELLO
 
 | Field          | Type   | Notes                                       |
 |----------------|--------|---------------------------------------------|
-| team_id        | u16    | 0 is the default (House) team               |
-| token          | string | 64 hex characters, issued by the event      |
-| client_name    | string | free text, for logs                         |
-| client_version | string | free text, for logs                         |
+| team_id        | u16    | 0 is the default team                       |
+| token          | string | 64 hex characters                           |
+| client_name    | string | free text for logging                       |
+| client_version | string | free text for logging                       |
 
 #### 0x02 HEARTBEAT
 
@@ -124,7 +79,7 @@ These are rules, not suggestions.
 |--------|------|-----------------------|
 | reason | u8   | see Goodbye reasons   |
 
-### Server to robot
+### Server -> Robot
 
 #### 0x81 WELCOME
 
@@ -138,15 +93,14 @@ These are rules, not suggestions.
 | heartbeat_timeout_ms  | u16    | Loss of Signal threshold, both directions |
 | status_interval_ms    | u16    | how often the server sends STATUS         |
 
-`game_id` tells the robot how to read the `detail` field of SCORE_UPDATE. Robots that only
-need totals can ignore it.
+`game_id` tells the robot how to read the `detail` field of SCORE_UPDATE.
 
 #### 0x82 REJECT
 
 | Field   | Type   | Notes                         |
 |---------|--------|-------------------------------|
 | reason  | u8     | see Reject reasons            |
-| message | string | human readable, for logs      |
+| message | string | human readable for logging    |
 
 The server closes the connection after sending REJECT.
 
@@ -154,21 +108,16 @@ The server closes the connection after sending REJECT.
 
 | Field            | Type | Notes                                         |
 |------------------|------|-----------------------------------------------|
-| match_id         | u32  | 0 = no match (team left the loaded match)     |
+| match_id         | u32  | 0 = no match                                  |
 | match_number     | u16  |                                               |
 | alliance         | u8   | see Alliance                                  |
-| opponent_team_id | u16  | 0xFFFF = no opponent (practice match)         |
+| opponent_team_id | u16  | 0xFFFF = no opponent                          |
 | phase_count      | u8   | number of timed phases that follow            |
 | phases           | ...  | `phase_count` entries of (phase u8, duration_ms u32) |
 
-Sent when a match containing the team is loaded or reset, on connect if the team is in
-the loaded match, and with `match_id = 0` when a new match is loaded that does not
-include the team. When `match_id` is 0 the remaining fields are zero and `phase_count`
-is 0.
+Sent when a match containing the team is loaded or reset, on connect if the team is in the loaded match, and with `match_id = 0` when a new match is loaded that does not include the team. When `match_id` is 0 the remaining fields are zero and `phase_count` is 0.
 
-`phases` lists the timed phases in the order they run. For STORM 2027 this is
-AUTONOMOUS 20000, REF_PAUSE 5000, TELEOP 220000 (with default config). Future games may
-use a different list, so do not hard-code it.
+`phases` lists the timed phases in the order they run. For STORM 2027 this is AUTONOMOUS 20000, REF_PAUSE 5000, TELEOP 220000.
 
 #### 0x84 PHASE_CHANGE
 
@@ -178,11 +127,9 @@ use a different list, so do not hard-code it.
 | phase_duration_ms  | u32  | 0 for untimed phases                  |
 | phase_remaining_ms | u32  | 0 for untimed phases                  |
 
-Sent to robots in the loaded match on every phase change. The change to AUTONOMOUS is a
-valid trigger for starting an autonomous routine.
+Sent to robots in the loaded match on every phase change. The change to AUTONOMOUS is a valid trigger for starting an autonomous routine.
 
-A field fault does not change the phase. The timer freezes and robots receive MOVE_AUTH
-`disabled, field_fault`. STATUS keeps reporting the frozen `phase_remaining_ms`.
+A field fault does not change the phase. The timer freezes and robots receive MOVE_AUTH `disabled, field_fault`. STATUS keeps reporting the frozen `phase_remaining_ms`.
 
 #### 0x85 MOVE_AUTH
 
@@ -200,10 +147,11 @@ ahead of anything else queued for the robot.
 |------------|-------|----------------------------------------|
 | red_total  | u16   |                                        |
 | blue_total | u16   |                                        |
-| detail     | bytes | game-specific, layout set by `game_id` |
+| detail     | bytes | game specific, layout set by `game_id` |
 
-Sent to robots in the loaded match when the score changes. The detail layout for each
-game is in `docs/games/`. STORM 2027: [loose-cannons-2027.md](games/loose-cannons-2027.md).
+Sent to robots in the loaded match when the score changes. The detail layout for each game is in `docs/games/`. 
+
+- STORM 2027 (Loose Cannons): [loose-cannons-2027.md](games/loose-cannons-2027.md).
 
 #### 0x87 STATUS
 
@@ -216,9 +164,7 @@ game is in `docs/games/`. STORM 2027: [loose-cannons-2027.md](games/loose-cannon
 | red_total          | u16  |                                        |
 | blue_total         | u16  |                                        |
 
-Sent every `status_interval_ms` to every connected robot. It is the server keepalive and
-it always carries the robot's current authorization, so a robot that missed a MOVE_AUTH
-still converges on the right state.
+Sent every `status_interval_ms` to every connected robot.
 
 #### 0x8F ERROR
 
@@ -247,16 +193,15 @@ Codes `malformed`, `replaced`, and `revoked` are followed by a close. Others are
 | 0x87  | STATUS       | server to robot |
 | 0x8F  | ERROR        | server to robot |
 
-Robots must ignore server message types they do not recognize. The server answers an
-unknown robot message type with ERROR `unknown_type` and keeps the connection open.
+Robots must ignore server message types they do not recognize. The server answers an unknown robot message type with ERROR `unknown_type` and keeps the connection open.
 
 ### Phases
 
-| Value | Name       | Robots may move                            |
+| Value | Name       | Robots May Move                            |
 |-------|------------|--------------------------------------------|
 | 0     | IDLE       | no                                         |
 | 1     | LOADED     | no                                         |
-| 2     | PRE_MATCH  | if the event allows it (rule M2, default yes) |
+| 2     | PRE_MATCH  | if the rules allows it (rule M2, default yes) |
 | 3     | AUTONOMOUS | yes                                        |
 | 4     | REF_PAUSE  | no                                         |
 | 5     | TELEOP     | yes                                        |
@@ -264,16 +209,13 @@ unknown robot message type with ERROR `unknown_type` and keeps the connection op
 | 7     | FINALIZED  | no                                         |
 | 8     | ABORTED    | no                                         |
 
-The "may move" column describes the phase. Whether a given robot may move is always
-decided by MOVE_AUTH and STATUS, never by the phase alone.
-
-### Authorization reasons
+### Authorization Reasons
 
 | Value | Name           | Meaning                                         |
 |-------|----------------|-------------------------------------------------|
 | 0     | unknown        | treat as disabled                               |
 | 1     | phase          | decided by the match phase                      |
-| 2     | estop          | e-stopped (robot or field), latched until cleared |
+| 2     | estop          | e-stopped (robot or field), latched             |
 | 3     | admin_disable  | disabled by an official                         |
 | 4     | admin_enable   | enabled by an official for testing or inspection |
 | 5     | loss_of_signal | server stopped hearing heartbeats               |
@@ -281,7 +223,7 @@ decided by MOVE_AUTH and STATUS, never by the phase alone.
 | 7     | field_fault    | match paused for a field fault                  |
 | 8     | no_match       | team is not in the loaded match                 |
 
-### Reject reasons
+### Reject Reasons
 
 | Value | Name           |
 |-------|----------------|
@@ -292,15 +234,15 @@ decided by MOVE_AUTH and STATUS, never by the phase alone.
 | 5     | bad_version    |
 | 6     | malformed      |
 
-### Error codes
+### Error Codes
 
 | Value | Name               | Meaning                                    |
 |-------|--------------------|--------------------------------------------|
 | 1     | unexpected_message | valid message at the wrong time (e.g. second HELLO) |
 | 2     | unknown_type       | unrecognized msg_type                      |
-| 3     | malformed          | payload could not be decoded; connection closes |
-| 4     | replaced           | a newer connection for this team took over; connection closes |
-| 5     | revoked            | credentials or permissions changed; connection closes |
+| 3     | malformed          | payload could not be decoded (connection closes) |
+| 4     | replaced           | a newer connection for this team took over (connection closes) |
+| 5     | revoked            | credentials or permissions changed (connection closes) |
 
 ### Alliance
 
@@ -309,14 +251,14 @@ decided by MOVE_AUTH and STATUS, never by the phase alone.
 | 1     | red  |
 | 2     | blue |
 
-### Robot state (HEARTBEAT)
+### Robot State (HEARTBEAT)
 
 | Value | Name           |
 |-------|----------------|
 | 0     | halted         |
 | 1     | moving_capable |
 
-### Goodbye reasons
+### Goodbye Reasons
 
 | Value | Name         |
 |-------|--------------|
@@ -324,7 +266,7 @@ decided by MOVE_AUTH and STATUS, never by the phase alone.
 | 1     | shutting_down |
 | 2     | restarting   |
 
-## Example exchange
+## Example Exchance
 
     robot  HELLO        team_id=12 token=... client_name="bot" client_version="1.0"
     server WELCOME      team_id=12 team_name="Iron Gulls" ... game_id="loose_cannons_2027"
@@ -342,12 +284,9 @@ decided by MOVE_AUTH and STATUS, never by the phase alone.
 
 Changes within version 1, newest first.
 
-- **2026-11-17, before the 2027 season:** `battery_mv` (u16) was removed from the end
-  of HEARTBEAT, which is now 5 bytes: `robot_uptime_ms`, `robot_state`. Robots should
-  stop sending it. The FMS still accepts the old 7-byte HEARTBEAT and ignores the extra
-  bytes, as it does for any message.
+- **2026-11-17, before the 2027 season:** `battery_mv` (u16) was removed from the end of HEARTBEAT, which is now 5 bytes: `robot_uptime_ms`, `robot_state`. Robots should stop sending it. The FMS still accepts the old 7-byte HEARTBEAT and ignores the extra bytes, as it does for any message.
 
-## Test vectors
+## Test Vectors
 
 Generated by `go generate ./internal/protocol`. Do not edit by hand.
 

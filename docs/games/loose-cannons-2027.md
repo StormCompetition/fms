@@ -1,24 +1,18 @@
 # STORM 2027 "Loose Cannons"
 
-game_id: `loose_cannons_2027`. Rule references are to the 2027 game manual, section 3.4
-and rules M3 and M6.
+game_id: `loose_cannons_2027`.
 
 ## Phases
 
 | Phase      | Default duration | Robots |
 |------------|------------------|--------|
-| AUTONOMOUS | 20 s             | enabled. Operators may only start or stop an auto routine |
-| REF_PAUSE  | 5 s              | disabled. Referees confirm autonomous scoring |
+| AUTONOMOUS | 20 s             | enabled |
+| REF_PAUSE  | 5 s              | disabled |
 | TELEOP     | 220 s            | enabled |
 
-PRE_MATCH movement is allowed by default (rule M2, `prematch_movement: true`). ENDED is
-disabled (rule M4). Durations come from `fms.yaml` under `loose_cannons_2027:` (keys
-`auto`, `ref_pause`, `teleop`).
+PRE_MATCH movement is allowed by default (rule M2, `prematch_movement: true`). ENDED is disabled (rule M4).
 
 ## Points
-
-All values are set by the event in the FMS config under `loose_cannons_2027.scoring`.
-Defaults:
 
 | Item                           | Auto | TeleOp |
 |--------------------------------|------|--------|
@@ -34,45 +28,11 @@ Defaults:
 
 Auto hit values are double the TeleOp values (`auto_multiplier: 2`).
 
-## Rules as implemented
-
-- **Hits** are scored by the alliance that shot the ball into the opposing ship.
-  `score red hull` means red put a ball into blue's hull.
-- **Phase attribution** comes from the event, not the clock. Hits logged during
-  REF_PAUSE default to auto, because that is when referees confirm autonomous scoring.
-- **Damaged.** An entry point on a ship is Damaged once 5 live (not voided) balls have
-  entered it, counting all phases. Damaged awards nothing on its own. Hits after that
-  still score normally.
-- **Climb**: hanging from the opposing ship's rope at match end. Logged in ENDED, at most
-  once per alliance.
-- **Damaged bonus**: +5 for each Damaged entry point on the opposing ship (the ones this
-  alliance damaged), only if this alliance Climbed.
-- **Penalties** subtract from the offending alliance. `penalty red minor` takes 6 from red.
-- **Disqualification** sets that alliance's final score to 0.
-- **Floor**: the final score is never below 0.
-
-Total, in order:
-
-    total = auto + teleop + climb + damaged_bonus - penalties
-    total = max(total, 0)
-    if disqualified: total = 0
-
-## Inputs
-
-| Input   | Logged in                        | Attributed to | Default attribution |
-|---------|----------------------------------|---------------|---------------------|
-| leave   | AUTONOMOUS, REF_PAUSE            | auto          | auto |
-| rudder  | AUTONOMOUS, REF_PAUSE, TELEOP, ENDED | auto, teleop | auto in AUTONOMOUS and REF_PAUSE, teleop after |
-| hull    | same as rudder                   | auto, teleop  | same as rudder |
-| mast    | same as rudder                   | auto, teleop  | same as rudder |
-| climb   | ENDED                            | teleop        | teleop |
-| minor   | PRE_MATCH through ENDED          | any           | current phase |
-| major   | PRE_MATCH through ENDED          | any           | current phase |
-| dq      | PRE_MATCH through ENDED          | any           | current phase |
-
-Refused inputs carry an FMS reason code plus detail, for
-example `wrong_phase: leave is only allowed in AUTONOMOUS, REF_PAUSE` or
-`already_scored: blue already has climb`.
+```
+total = auto + teleop + climb + damaged_bonus - penalties
+total = max(total, 0)
+if disqualified: total = 0
+```
 
 ## SCORE_UPDATE detail
 
@@ -87,12 +47,9 @@ example `wrong_phase: leave is only allowed in AUTONOMOUS, REF_PAUSE` or
     4      1    climbed         0 or 1
     5      2    penalty_points  points deducted from this alliance (positive number)
 
-Counts saturate at 255 on the wire. The server keeps exact counts.
-
 ## Example
 
-Red in auto: leave, 2 hull. TeleOp: 3 more hull (hull now Damaged), 1 mast. Climbs. One
-minor penalty.
+Red in auto: leave, 2 hull. TeleOp: 3 more hull (hull now Damaged), 1 mast. Climbs. One minor penalty.
 
     auto     5 + 2*8         = 21
     teleop   3*4 + 1*5       = 17

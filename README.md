@@ -1,52 +1,38 @@
-# STORM FMS: robot protocol and example clients
+# STORM FMS
 
-Everything a team needs to connect a robot to the STORM Field Management System (FMS).
-The FMS controls match timing, phase, scoring, and whether each robot may move.
-Operators drive their robots directly. The FMS never relays commands.
+Everything your team will need to connect a robot to the STORM Field Management System (FMS). The FMS controls match timing, phase, scoring, and whether your robot may move. The FMS will never relay commands or anything like that..
 
-- [docs/protocol.md](docs/protocol.md): the robot protocol. It is part of the
-  competition rules (rule C15), and every robot must implement it.
-- [docs/games/loose-cannons-2027.md](docs/games/loose-cannons-2027.md): the 2027
-  game, including the layout of the SCORE_UPDATE `detail` bytes.
-- [testdata/protocol_vectors.json](testdata/protocol_vectors.json): golden bytes for
-  every message, plus invalid inputs your decoder must refuse. Test against these.
+- [docs/protocol.md](docs/protocol.md): the protocol. It is part of the competition rules (vua rule C15) and thus must be implemented.
+- [docs/games/loose-cannons-2027.md](docs/games/loose-cannons-2027.md): the 2027 game which includes the layout of the SCORE_UPDATE `detail` bytes.
+- [testdata/protocol_vectors.json](testdata/protocol_vectors.json): golden bytes for every message to test against.
 - [examples/](examples/): an example client you can start from.
   - [examples/java](examples/java): Java 17 or later, JDK only.
 - [docs/practice-fms.md](docs/practice-fms.md): run the FMS yourself, to practice before an event.
 
+> [!NOTE]
+> **AI Assistance Disclosure:** Portions of this repository, including some documentation, were generated using Large Language Models (LLMs). All AI assisted outputs have been reviewed and tested by human maintainers.
+
 ## What every robot must do
 
-These are the safety rules from the protocol. The example client implements all of them.
+At minimum, your robot must do the following. The example client demonstrates each of these.
 
-1. **Start disabled.** Nothing moves until the FMS sends `enabled = 1`.
-2. **Loss of Signal (rule R7).** If no message of any kind arrives from the FMS for
-   `heartbeat_timeout_ms`, halt. Halt within 1 s even if the timeout is longer.
-3. **Disabled means stopped (rule C17).** Obey the latest MOVE_AUTH or STATUS. Treat an
-   authorization reason you do not recognize as disabled.
-4. Send HEARTBEAT every `heartbeat_interval_ms`, from WELCOME on.
+1. **Start disabled** Nothing moves until the FMS sends `enabled = 1`.
+2. **Loss of Signal (rule R7).** If no message of any kind arrives from the FMS for `heartbeat_timeout_ms`, halt. Halt within 1 s even if the timeout is longer.
+3. **Disabled means stopped (rule C17).** Obey the latest MOVE_AUTH or STATUS.
+4. Send HEARTBEAT every `heartbeat_interval_ms`, from WELCOME and onward.
 
 ## Running an example
 
-Your event gives you a team number and a 64-character token. Pass the token in the
-`STORM_TOKEN` environment variable, so it stays out of your shell history and process
-list:
+Your team dashboard gives you a 64-character token and a team number you will use to identify your connection. Pass the token in the `STORM_TOKEN` environment variable:
 
-    STORM_TOKEN=<token> java examples/java/StormRobot.java --host <fms address> --team 12
+```bash
+STORM_TOKEN=<token> java examples/java/StormRobot.java --host <fms address> --team 3942
+```
 
-The client prints one line per change:
+## FMS Source & Example Servers
 
-    motion: disabled (starting)
-    connected: team 12 "Iron Gulls" robot "Gull 3" game loose_cannons_2027
-    motion: disabled (phase)
-    phase: PRE_MATCH 0.0 s
-    motion: enabled (phase)
+The source code of the actual FMS will remain private for the time being. However, we have provided prebuilt servers that can be run on both Windows and Linux. These are trimmed down versions of what will actually be running on the field, but should provide the core functionality for testing.
 
-Then put your motor code where the client says to. Disabling must stop your actuators
-straight away, from the same thread that receives messages. Don't queue it behind other
-work.
+## Questions and Issues
 
-## Questions and changes
-
-This repository is published from the FMS sources, so it is read-only here. Report
-problems to your event's technical staff. The protocol only changes through a rules
-update.
+If you encounter any issues, please feel free to email [storm@ou.edu](mailto:storm@ou.edu) or create an [issue](https://github.com/StormCompetition/fms/issues) here on this github page.
