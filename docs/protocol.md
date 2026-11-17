@@ -39,7 +39,8 @@ Receiver rules:
   closes.
 - A payload shorter than the fields of its message type is malformed.
 - Bytes after the last known field of a message are ignored. Later revisions of version 1
-  may append fields to a message; they will never change or remove existing ones.
+  may append fields to a message. They never change the meaning or position of the
+  fields before them. See Revisions for the one removal so far.
 - `sequence` is informational. Receivers may log gaps but must not reject on them.
 
 ### Field types
@@ -336,6 +337,15 @@ decided by MOVE_AUTH and STATUS, never by the phase alone.
     server MOVE_AUTH    enabled=1 reason=phase
     server PHASE_CHANGE phase=AUTONOMOUS duration=20000 remaining=20000
     ...
+
+## Revisions
+
+Changes within version 1, newest first.
+
+- **2026-11-17, before the 2027 season:** `battery_mv` (u16) was removed from the end
+  of HEARTBEAT, which is now 5 bytes: `robot_uptime_ms`, `robot_state`. Robots should
+  stop sending it. The FMS still accepts the old 7-byte HEARTBEAT and ignores the extra
+  bytes, as it does for any message.
 
 ## Test vectors
 
