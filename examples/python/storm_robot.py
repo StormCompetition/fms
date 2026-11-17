@@ -147,10 +147,6 @@ class Robot:
     def on_score(self, red, blue):
         print("score: red %d blue %d" % (red, blue), flush=True)
 
-    def battery_mv(self):
-        """Battery voltage for HEARTBEAT, in millivolts. 0 means unknown."""
-        return 0
-
     # ---- Authorization -------------------------------------------------------
 
     def set_motion(self, enabled, reason):
@@ -175,7 +171,7 @@ class Robot:
     def send_heartbeat(self):
         uptime = int((time.monotonic() - self.started) * 1000) & 0xFFFFFFFF
         state = ROBOT_MOVING_CAPABLE if self.enabled else ROBOT_HALTED
-        self.send(HEARTBEAT, struct.pack(">IBH", uptime, state, self.battery_mv()))
+        self.send(HEARTBEAT, struct.pack(">IB", uptime, state))
 
     def close(self, goodbye=False):
         if self.sock is None:

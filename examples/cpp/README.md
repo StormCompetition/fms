@@ -25,7 +25,6 @@ Fill in the hooks at the top of `class Robot`:
 - `on_phase(phase, duration_ms, remaining_ms)`: the change to `AUTONOMOUS` can start
   your autonomous routine. The routine still only drives while motion is enabled.
 - `on_score(red, blue)`: optional.
-- `battery_mv()`: optional, reported to the field in each HEARTBEAT.
 
 The client runs on one thread. If your control loop runs on another, share the enabled
 flag through a `std::atomic<bool>` set in `on_motion`, and check it before every

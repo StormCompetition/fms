@@ -21,7 +21,6 @@ Subclass `Robot` (or edit it) and fill in:
 - `on_phase(phase, duration_ms, remaining_ms)`: the change to `AUTONOMOUS` can start
   your autonomous routine. The routine still only drives while motion is enabled.
 - `on_score(red, blue)`: optional.
-- `battery_mv()`: optional, reported to the field in each HEARTBEAT.
 
 The client runs on one thread. If your control loop runs on another, read
 `robot.enabled` there before every actuator command. On Loss of Signal the client keeps

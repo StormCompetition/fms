@@ -251,10 +251,9 @@
       "seq": 1,
       "fields": {
         "robot_uptime_ms": 123456,
-        "robot_state": 1,
-        "battery_mv": 12600
+        "robot_state": 1
       },
-      "hex": "5354524d01020000000700010001e240013138"
+      "hex": "5354524d01020000000500010001e24001"
     },
     {
       "name": "heartbeat_halted",
@@ -262,10 +261,9 @@
       "seq": 2,
       "fields": {
         "robot_uptime_ms": 0,
-        "robot_state": 0,
-        "battery_mv": 0
+        "robot_state": 0
       },
-      "hex": "5354524d010200000007000200000000000000"
+      "hex": "5354524d01020000000500020000000000"
     },
     {
       "name": "goodbye",

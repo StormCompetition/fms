@@ -217,9 +217,6 @@ class Robot {
     std::fflush(stdout);
   }
 
-  // Battery voltage for HEARTBEAT, in millivolts. 0 means unknown.
-  uint16_t battery_mv() { return 0; }
-
   // ---- Connection ----------------------------------------------------------
 
   // Connects, and reconnects after any failure, until SIGINT or SIGTERM.
@@ -294,7 +291,6 @@ class Robot {
     Writer w;
     w.u32(uint32_t(up));
     w.u8(enabled_ ? kRobotMovingCapable : kRobotHalted);
-    w.u16(battery_mv());
     send(kHeartbeat, w.b);
   }
 
