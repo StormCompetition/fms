@@ -25,11 +25,11 @@ All integers are unsigned and big endian. Every message is a 12-byte header foll
 
 Receiver rules:
 
-- Bad magic, or `payload_len` over 1024: close the connection immediately. Do not try to resync, as a stream that is out of frame cannot be trusted.
-- Version other than 0x01: the server sends REJECT `bad_version` (framed as version 1) and closes.
+- Bad magic, or `payload_len` over 1024: close the connection immediately.
+- Version other than 0x01: the server sends REJECT `bad_version` and closes.
 - A payload shorter than the fields of its message type is malformed.
 - Bytes after the last known field of a message are ignored. Later revisions of version 1 may append fields to a message. They never change the meaning or position of the fields before them.
-- `sequence` is informational. Receivers may log gaps but must not reject on them.
+- `sequence` is purely informational.
 
 ### Field Types
 
@@ -56,11 +56,9 @@ The `enabled` fields in MOVE_AUTH and STATUS are u8 and must be exactly 0 or 1. 
 
 If a second valid connection arrives for a team, it replaces the first. The server sends ERROR `replaced` on the old connection and closes it.
 
-The server may also close a live connection with ERROR `revoked` when the team's token is regenerated, the team is deactivated or removed, or its allowed CIDRs no longer include the robot's address.
-
 ## Safety requirements
 
-- **Loss of Signal (rule R7).** If the robot receives no server message of any kind for `heartbeat_timeout_ms`, it must treat the link as lost and halt all motion. It must halt within 1s of the last server message regardless of the configured timeout.
+- **Loss of Signal (rule R7).** If the robot receives no server message of any kind for `heartbeat_timeout_ms`, it must treat the connection as lost and halt all motion. It must halt within 1s of the last server message regardless of the configured timeout.
 - **Disabled (rule C17).** When the most recent MOVE_AUTH or STATUS says `enabled = 0` the robot is not allowed to be controlled. Treat any authorization reason you do not recognize as disabled.
 - **Starting Disabled.** A robot is disabled from connect until the server says otherwise.
 - The server side view: if no HEARTBEAT arrives for `heartbeat_timeout_ms` the server marks the robot `loss_of_signal` and disables it. It will re-enable it once heartbeats resume.
