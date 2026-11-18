@@ -202,19 +202,6 @@
       ]
     },
     {
-      "name": "robot_state",
-      "values": [
-        {
-          "value": 0,
-          "name": "halted"
-        },
-        {
-          "value": 1,
-          "name": "moving_capable"
-        }
-      ]
-    },
-    {
       "name": "goodbye_reason",
       "values": [
         {
@@ -249,21 +236,8 @@
       "name": "heartbeat",
       "msg_type": "HEARTBEAT",
       "seq": 1,
-      "fields": {
-        "robot_uptime_ms": 123456,
-        "robot_state": 1
-      },
-      "hex": "5354524d01020000000500010001e24001"
-    },
-    {
-      "name": "heartbeat_halted",
-      "msg_type": "HEARTBEAT",
-      "seq": 2,
-      "fields": {
-        "robot_uptime_ms": 0,
-        "robot_state": 0
-      },
-      "hex": "5354524d01020000000500020000000000"
+      "fields": {},
+      "hex": "5354524d0102000000000001"
     },
     {
       "name": "goodbye",
@@ -454,7 +428,7 @@
     },
     {
       "name": "short_payload",
-      "hex": "5354524d0102000000030000000000",
+      "hex": "5354524d018500000001000000",
       "expect": "malformed"
     },
     {

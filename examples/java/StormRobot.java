@@ -62,7 +62,6 @@ public class StormRobot {
       2, "unknown_type", 3, "malformed", 4, "replaced", 5, "revoked");
   static final Map<Integer, String> ALLIANCES = Map.of(1, "red", 2, "blue");
 
-  static final byte ROBOT_HALTED = 0, ROBOT_MOVING_CAPABLE = 1;
   static final byte GOODBYE_SHUTTING_DOWN = 1;
 
   static final long MS = 1_000_000; // nanoseconds
@@ -147,7 +146,6 @@ public class StormRobot {
 
   volatile boolean enabled = false;
   String reason = "starting";
-  final long started = System.nanoTime();
   volatile boolean stopping = false;
 
   boolean welcomed;
@@ -241,9 +239,7 @@ public class StormRobot {
   }
 
   void sendHeartbeat() throws IOException {
-    int uptimeMs = (int) ((System.nanoTime() - started) / MS); // u32, wraps
-    byte state = enabled ? ROBOT_MOVING_CAPABLE : ROBOT_HALTED;
-    send(HEARTBEAT, b -> b.putInt(uptimeMs).put(state));
+    send(HEARTBEAT, b -> {}); // no fields
   }
 
   void close(boolean goodbye) {
