@@ -36,3 +36,7 @@ The source code of the actual FMS will remain private for the time being. Howeve
 ## Questions and Issues
 
 If you encounter any issues, please feel free to email [storm@ou.edu](mailto:storm@ou.edu) or create an [issue](https://github.com/StormCompetition/fms/issues) here on this github page.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
