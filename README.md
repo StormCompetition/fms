@@ -6,8 +6,8 @@ Everything your team will need to connect a robot to the STORM Field Management 
 - [docs/games/loose-cannons-2027.md](docs/games/loose-cannons-2027.md): the 2027 game which includes the layout of the SCORE_UPDATE `detail` bytes.
 - [testdata/protocol_vectors.json](testdata/protocol_vectors.json): golden bytes for every message to test against.
 - [examples/](examples/): an example client you can start from.
-  - [examples/java](examples/java): Java 17 or later, JDK only.
-- [docs/practice-fms.md](docs/practice-fms.md): run the FMS yourself, to practice before an event.
+  - [examples/java](examples/java): Java 17 or later.
+- [docs/practice-fms.md](docs/practice-fms.md): run the FMS yourself.
 
 > [!NOTE]
 > **AI Assistance Disclosure:** Portions of this repository, including some documentation, were generated using Large Language Models (LLMs). All AI assisted outputs have been reviewed and tested by human maintainers.
@@ -23,7 +23,7 @@ At minimum, your robot must do the following. The example client demonstrates ea
 
 ## Running an example
 
-Your team dashboard gives you a 64-character token and a team number you will use to identify your connection. Pass the token in the `STORM_TOKEN` environment variable:
+Your team dashboard will give you a 64 character token and a team number you will use to identify your connection. Pass the token in the `STORM_TOKEN` environment variable:
 
 ```bash
 STORM_TOKEN=<token> java examples/java/StormRobot.java --host <fms address> --team 3942
