@@ -5,16 +5,13 @@ Everything your team will need to connect a robot to the STORM Field Management 
 - [docs/protocol.md](docs/protocol.md): the protocol. It is part of the competition rules (via rule C15) and thus must be implemented.
 - [docs/games/loose-cannons-2027.md](docs/games/loose-cannons-2027.md): the 2027 game which includes the layout of the SCORE_UPDATE `detail` bytes.
 - [testdata/protocol_vectors.json](testdata/protocol_vectors.json): golden bytes for every message to test against.
-- [examples/](examples/): an example client you can start from.
+- [examples/](examples/): example clients.
   - [examples/java](examples/java): Java 17 or later.
 - [docs/practice-fms.md](docs/practice-fms.md): run the FMS yourself.
 
-> [!NOTE]
-> **AI Assistance Disclosure:** Portions of this repository, including some documentation, were generated using Large Language Models (LLMs). All AI assisted outputs have been reviewed and tested by human maintainers.
-
 ## What every robot must do
 
-At minimum, your robot must do the following. The example client demonstrates each of these.
+At minimum, your robot must do the following. The example client(s) demonstrates each of these.
 
 1. **Start disabled.** Nothing moves until the FMS sends `enabled = 1`.
 2. **Loss of Signal (rule R7).** If no message of any kind arrives from the FMS for `heartbeat_timeout_ms`, halt. Halt within 1 s even if the timeout is longer.
@@ -31,7 +28,7 @@ STORM_TOKEN=<token> java examples/java/StormRobot.java --host <fms address> --te
 
 ## FMS Source & Example Servers
 
-The source code of the actual FMS will remain private for the time being. However, we have provided prebuilt servers that can be run on Linux, macOS, and Windows. These are trimmed down versions of what will actually be running on the field, but should provide the core functionality for testing.
+The source code of the actual FMS will remain private for the time being. However, we have provided prebuilt "servers" that can be run on Linux, macOS, and Windows. These are trimmed down versions of what will actually be running on the field, but should provide the core functionality for testing.
 
 ## Questions and Issues
 
